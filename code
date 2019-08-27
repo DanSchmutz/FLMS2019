@@ -1,0 +1,149 @@
+# R training
+### Getting to know R Studio
+
+data() # gives list of installed datasets
+data("iris") # loads dataset into our environment
+View(iris) # acheived by clicking in the environment window, note we can't edit this directly
+str(iris) # gives us quick look at the structure of the dataset, note num and factors
+class(iris) # if we forget we can ask what class an object is
+summary(iris) # quick statistics on each variable. not the balanced sample size and no missing values
+plot(iris) # plot does different things depending on what you send it, here a scatterplot matrix
+cor(iris) # results in error
+cor(iris[,1:4]) # works
+cor(iris[,-5]) # also works
+# now hit the up arrow
+cor(iris[,-5])^2 # add the caret and 2 and you get the squared correlation coefficient
+# what if I wanted to do spearman's?, read the help
+?cor
+cor(iris[,-5],method="spearman")
+# what if I want signicance values?, click in help file
+cor.test(iris[,-5],method="pearson")
+#Error in cor.test.default(iris[, -5], method = "pearson") :argument "y" is missing, with no default
+cor.test(iris$Petal.Length,iris$Petal.Width) # we learn to use the $ notation to access variables in the dataframe
+
+# how about a prettier version of our correlation matrix?
+library("corrplot", lib.loc="~/R/win-library/3.5") # accessed by clicking on corrplot in packages
+d<-cor(iris[,-5]) # save our correlation table to an object called d
+corrplot(d) #simple corrplot
+?corrplot # look at all the options
+corrplot(d,type="lower",method="number") # nice one to dry attendion to large pos and neg correlations
+# you can save this figure out to a jpg or wmf or simply copy to the clipboard and paste into word or powerpoint
+lm1<-lm(iris$Petal.Length~iris$Petal.Width,data=iris) # using linear model to study this relationship in more depth
+plot(lm1) # see the default plots for regression diagnostics
+summary(lm1) # see summary of results
+str(lm1) # see structure of results. wow! you can extract predictions or coefficients using the correct syntax
+lm1$coefficients # for example
+lm1$fitted.values # too many to show on screen, let's extract them add add them to a copy of our iris dataset
+irispreds<-iris # made a copy
+irispreds$predictions<-lm1$fitted.values # now add the var
+
+rattle() # Error in rattle() : could not find function "rattle", have to load library
+library("rattle", lib.loc="~/R/win-library/3.5") # performed by click in Packages
+rattle()
+# load the R dataset
+
+
+### Machine Learning
+# start with example use of rattle()
+library("rattle", lib.loc="~/R/win-library/3.5")
+rattle()
+
+# using caret()
+library(readr)
+rtalldata <- read_csv("rtalldata.csv", col_types = cols(whasorno16 = col_factor(levels = c("0", "1"))))
+View(rtalldata)
+# train test split
+set.seed(42)
+sample <- sample.int(n = nrow(rtalldata), size = floor(0.80*nrow(rtalldata)), replace = F)
+train <- rtalldata[sample, ]
+test  <- rtalldata[-sample, ]
+
+# load packages
+library("randomForest", lib.loc="~/R/win-library/3.5")
+library("caret", lib.loc="~/R/win-library/3.5")
+
+# set up and run train control
+set.seed(42)
+control <- trainControl(method="repeatedcv", number=10, repeats=3, search="grid")
+tunegrid <- expand.grid(.mtry=c(1:29))
+metric<-"Accuracy"
+rf_gridsearch <- train(whasorno16~., data= train, method="rf", metric=metric, tuneGrid=tunegrid, trControl=control)
+print(rf_gridsearch)
+plot(rf_gridsearch)
+
+# let's look at best model in more detail
+# rf_gridsearch$finalModel
+
+# rftrain<-randomForest(whasorno16~.,train,mtry=1)
+# rftrain10000<-randomForest(whasorno16~.,train,mtry=1,ntree=10000) # using mtry 1
+
+# how does it do on the 20% held-out test set?
+testpred<-predict(rf_gridsearch$finalModel,newdata=test) # make predictions on 20% test dataset using training dataset-developed model
+confusionMatrix(testpred,test$whasorno16) # evaluating performance on out-of-sample test dataset 
+
+# using all the data
+set.seed(42)
+control <- trainControl(method="repeatedcv", number=10, repeats=3, search="grid")
+tunegrid <- expand.grid(.mtry=c(1:29))
+metric<-"Accuracy"
+rf_gridsearch <- train(whasorno16~., data= rtalldata, method="rf", metric=metric, tuneGrid=tunegrid, trControl=control)
+print(rf_gridsearch)
+plot(rf_gridsearch)
+
+# using all the data with logistic regression for comparison
+set.seed(42)
+control <- trainControl(method="repeatedcv", number=10, repeats=3)
+metric<-"Accuracy"
+logisticcompare <- train(whasorno16~., data= rtalldata, method="glm", metric=metric, trControl=control)
+print(logisticcompare)
+
+# comparing the 3x by 10 folds = 30 different accuracies per method
+resamp<-resamples(list(RF=rf_gridsearch,Logistic=logisticcompare))
+summary(resamp)
+modeldifferences<-diff(resamp)
+summary(modeldifferences)
+bwplot(resamp,metric="Accuracy",main="RF vs Logistic")
+
+# making importance plots
+rftrain10000<-randomForest(whasorno16~.,rtalldata,mtry=1,ntree=10000,importance=TRUE) # using mtry 1
+varImpPlot(rftrain10000)
+partialPlot(rftrain10000,as.data.frame(rtalldata),ufaddnmd16,which.class=1) #visualize partial dependence plot
+partialPlot(rftrain10000,as.data.frame(rtalldata),sasddnmd16,which.class=1) #visualize partial dependence plot
+partialPlot(rftrain10000,as.data.frame(rtalldata),ddnmd08t14,which.class=1) #visualize partial dependence plot
+partialPlot(rftrain10000,as.data.frame(rtalldata),ufa_predv,which.class=1) #visualize partial dependence plot
+
+
+### working on dpyr
+
+#ok the below worked
+babynames %>%    
+  filter(sex=="M" & name=="Danyel") %>%    
+  select(year,prop) %>%    
+  arrange(year) %>%    
+  ggplot(aes(x = year,  y = prop))+ geom_line()
+
+p<-babynames %>%    
+     filter(sex=="M" & name=="Danyel") %>%    
+     select(year,prop) %>%    
+     arrange(year) %>%    
+     ggplot(aes(x = year,  y = prop))+ geom_line()
+
+p+theme(text = element_text(size = 14))+labs(x="Year",y="Proportion of Males")+ggtitle("Popularity of Birthname Danyel")+geom_point(size=2)
+
+# trying other people
+q<-babynames %>%    
+  filter(sex=="F" & name=="Sharon") %>%    
+  select(year,prop) %>%    
+  arrange(year) %>%    
+  ggplot(aes(x = year,  y = prop))+ geom_line()
+
+q+theme(text = element_text(size = 14))+labs(x="Year",y="Proportion of Females")+ggtitle("Popularity of Birthname Sharon")+geom_point(size=2)
+
+# trying other people
+q<-babynames %>%    
+  filter(sex=="F" & name=="Helen") %>%    
+  select(year,prop) %>%    
+  arrange(year) %>%    
+  ggplot(aes(x = year,  y = prop))+ geom_line()
+
+q+theme(text = element_text(size = 14))+labs(x="Year",y="Proportion of Females")+ggtitle("Popularity of Birthname Helen")+geom_point(size=2)
