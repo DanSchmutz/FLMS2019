@@ -1,0 +1,23 @@
+library("automap", lib.loc="~/R/win-library/3.1") # load required package
+
+read.csv("T:/TampaBayWater/UnmonitoredWetlandsRecovery/Analysis/170109_VariogramforWHA_NTB_only/R_WHA_NTB_Only/wetlakenoaugonly2008.csv") # read in data file
+
+data<-wetlakenoaugonly2008 # rename data file
+
+attach(data) # attach this dataframe
+
+coordinates(data) = ~ XCOORD + YCOORD # create SpatialPointsDataFrame object from data
+
+vr1=autofitVariogram(npo2008trans  ~ 1+TBWDDN*RAXericRat*IAthicknes, data) # perform regression kriging, kriging residuals remaining after running regression with these three variables and their interactions
+
+plot(vr1) # plot the experimental variogram variogram model
+
+predictgrid3 <- read.csv("T:/TampaBayWater/UnmonitoredWetlandsRecovery/Analysis/161013_IDW_SG/predictgrid3.csv") # import the grid needed to generate regression-kriging predictions
+
+coordinates(predictgrid3) = ~ X_COORD + Y_COORD # make grid a SpatialPointsDataFrame
+
+reg_kriging_result=autoKrige(npo2008trans ~ 1+TBWDDN*RAXericRat*IAthicknes, data, predictgrid3) # using the regression kriging to predict across study area
+
+write.csv(reg_kriging_result$krige_output, file="reg_krige.csv") # output kriging results to csv to pull into ArcGIS and convert to Thiessen polygons to rebuild the grid
+
+kr.cv=autoKrige.cv(npo2008trans  ~ 1+TBWDDN*RAXericRat*IAthicknes, data) # perform a  leave one out cross-validation
